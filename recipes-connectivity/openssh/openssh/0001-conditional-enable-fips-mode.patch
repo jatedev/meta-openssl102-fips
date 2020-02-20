@@ -1,4 +1,4 @@
-From 60204df9d1f54f581f9ddc5443228550cadd4b4b Mon Sep 17 00:00:00 2001
+From ef6490841a73b4f71ca35e09328c6a8b0ad9dba9 Mon Sep 17 00:00:00 2001
 From: Hongxu Jia <hongxu.jia@windriver.com>
 Date: Sat, 21 Dec 2019 13:03:23 +0800
 Subject: [PATCH] conditional enable fips mode
@@ -56,10 +56,10 @@ index 359204f..346255a 100644
  	log_init(__progname, log_level, log_facility, log_stderr);
  
 diff --git a/sftp.c b/sftp.c
-index b66037f..ca263ac 100644
+index ff14d3c..a633200 100644
 --- a/sftp.c
 +++ b/sftp.c
-@@ -2387,6 +2387,7 @@ main(int argc, char **argv)
+@@ -2390,6 +2390,7 @@ main(int argc, char **argv)
  	size_t num_requests = DEFAULT_NUM_REQUESTS;
  	long long limit_kbps = 0;
  
@@ -68,10 +68,10 @@ index b66037f..ca263ac 100644
  	sanitise_stdfd();
  	msetlocale();
 diff --git a/ssh-add.c b/ssh-add.c
-index ebfb8a3..b7d59bc 100644
+index 8057eb1..19f3da2 100644
 --- a/ssh-add.c
 +++ b/ssh-add.c
-@@ -577,6 +577,7 @@ main(int argc, char **argv)
+@@ -628,6 +628,7 @@ main(int argc, char **argv)
  	SyslogFacility log_facility = SYSLOG_FACILITY_AUTH;
  	LogLevel log_level = SYSLOG_LEVEL_INFO;
  
@@ -80,10 +80,10 @@ index ebfb8a3..b7d59bc 100644
  	sanitise_stdfd();
  
 diff --git a/ssh-agent.c b/ssh-agent.c
-index 9c6680a..d701479 100644
+index 7eb6f0d..1409044 100644
 --- a/ssh-agent.c
 +++ b/ssh-agent.c
-@@ -1104,6 +1104,7 @@ main(int ac, char **av)
+@@ -1196,6 +1196,7 @@ main(int ac, char **av)
  	size_t npfd = 0;
  	u_int maxfds;
  
@@ -92,10 +92,10 @@ index 9c6680a..d701479 100644
  	sanitise_stdfd();
  
 diff --git a/ssh-keygen.c b/ssh-keygen.c
-index cb4982d..84dd269 100644
+index feafe73..9b832f6 100644
 --- a/ssh-keygen.c
 +++ b/ssh-keygen.c
-@@ -2800,6 +2800,7 @@ main(int argc, char **argv)
+@@ -3140,6 +3140,7 @@ main(int argc, char **argv)
  	extern int optind;
  	extern char *optarg;
  
@@ -104,10 +104,10 @@ index cb4982d..84dd269 100644
  	sanitise_stdfd();
  
 diff --git a/ssh-keyscan.c b/ssh-keyscan.c
-index 5de0508..0644261 100644
+index a5e6440..e56a9d1 100644
 --- a/ssh-keyscan.c
 +++ b/ssh-keyscan.c
-@@ -663,6 +663,7 @@ main(int argc, char **argv)
+@@ -675,6 +675,7 @@ main(int argc, char **argv)
  	extern int optind;
  	extern char *optarg;
  
@@ -116,7 +116,7 @@ index 5de0508..0644261 100644
  	seed_rng();
  	TAILQ_INIT(&tq);
 diff --git a/ssh-keysign.c b/ssh-keysign.c
-index 6cfd5b4..23cf403 100644
+index 3e3ea3e..4804c42 100644
 --- a/ssh-keysign.c
 +++ b/ssh-keysign.c
 @@ -173,6 +173,7 @@ main(int argc, char **argv)
@@ -128,10 +128,10 @@ index 6cfd5b4..23cf403 100644
  		fatal("%s: pledge: %s", __progname, strerror(errno));
  
 diff --git a/ssh-pkcs11-helper.c b/ssh-pkcs11-helper.c
-index 3bcc244..6a78a1a 100644
+index 17220d6..1af0c2e 100644
 --- a/ssh-pkcs11-helper.c
 +++ b/ssh-pkcs11-helper.c
-@@ -325,6 +325,7 @@ main(int argc, char **argv)
+@@ -332,6 +332,7 @@ main(int argc, char **argv)
  	extern char *__progname;
  	struct pollfd pfd[2];
  
@@ -140,22 +140,22 @@ index 3bcc244..6a78a1a 100644
  	seed_rng();
  	TAILQ_INIT(&pkcs11_keylist);
 diff --git a/ssh.c b/ssh.c
-index 0724df4..9178673 100644
+index 49331fc..06836dd 100644
 --- a/ssh.c
 +++ b/ssh.c
-@@ -598,6 +598,7 @@ main(int ac, char **av)
- 	struct ssh_digest_ctx *md;
+@@ -606,6 +606,7 @@ main(int ac, char **av)
  	u_char conn_hash[SSH_DIGEST_MAX_LENGTH];
+ 	size_t n, len;
  
 +	ssh_enable_fips_mode();
  	/* Ensure that fds 0, 1 and 2 are open or directed to /dev/null */
  	sanitise_stdfd();
  
 diff --git a/sshd.c b/sshd.c
-index 2bf8939..c75e34a 100644
+index b86d682..304bf01 100644
 --- a/sshd.c
 +++ b/sshd.c
-@@ -1443,6 +1443,7 @@ main(int ac, char **av)
+@@ -1514,6 +1514,7 @@ main(int ac, char **av)
  	Authctxt *authctxt;
  	struct connection_info *connection_info = NULL;
  
@@ -164,7 +164,7 @@ index 2bf8939..c75e34a 100644
  	(void)set_auth_parameters(ac, av);
  #endif
 diff --git a/xmalloc.c b/xmalloc.c
-index 9cd0127..e2f8145 100644
+index b48d33b..456a063 100644
 --- a/xmalloc.c
 +++ b/xmalloc.c
 @@ -23,6 +23,10 @@
@@ -178,9 +178,9 @@ index 9cd0127..e2f8145 100644
  #include "xmalloc.h"
  #include "log.h"
  
-@@ -110,3 +114,19 @@ xasprintf(char **ret, const char *fmt, ...)
- 
- 	return (i);
+@@ -117,3 +121,19 @@ xasprintf(char **ret, const char *fmt, ...)
+ 	va_end(ap);
+ 	return i;
  }
 +
 +void
@@ -199,13 +199,13 @@ index 9cd0127..e2f8145 100644
 +    }
 +}
 diff --git a/xmalloc.h b/xmalloc.h
-index 1d5f62d..d71b8a8 100644
+index abaf7ad..b3b1c8c 100644
 --- a/xmalloc.h
 +++ b/xmalloc.h
-@@ -24,3 +24,4 @@ char	*xstrdup(const char *);
- int	 xasprintf(char **, const char *, ...)
-                 __attribute__((__format__ (printf, 2, 3)))
+@@ -26,3 +26,4 @@ int	 xasprintf(char **, const char *, ...)
                  __attribute__((__nonnull__ (2)));
+ int	 xvasprintf(char **, const char *, va_list)
+ 		__attribute__((__nonnull__ (2)));
 +void	ssh_enable_fips_mode(void);
 -- 
 2.7.4

@@ -1,4 +1,4 @@
-From 6b6e0f7d4a517378a8d53b84fbef2cfc78c42f46 Mon Sep 17 00:00:00 2001
+From a2c2c21275ea701c2f0ae54bf5945c92860e9208 Mon Sep 17 00:00:00 2001
 From: Hongxu Jia <hongxu.jia@windriver.com>
 Date: Sat, 21 Dec 2019 13:08:52 +0800
 Subject: [PATCH] add KDF CAVS test driver
@@ -19,6 +19,7 @@ Signed-off-by: Mark Hatle <mark.hatle@windriver.com>
 Upstream-Status: Inappropriate [oe specific]
 
 Signed-off-by: Hongxu Jia <hongxu.jia@windriver.com>
+Signed-off-by: Yi Zhao <yi.zhao@windriver.com>
 ---
  Makefile.in        |   8 +-
  ssh-cavs.c         | 387 +++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -28,7 +29,7 @@ Signed-off-by: Hongxu Jia <hongxu.jia@windriver.com>
  create mode 100644 ssh-cavs_driver.pl
 
 diff --git a/Makefile.in b/Makefile.in
-index 1d6e298..be28411 100644
+index 0accd89..5789323 100644
 --- a/Makefile.in
 +++ b/Makefile.in
 @@ -24,6 +24,7 @@ ASKPASS_PROGRAM=$(libexecdir)/ssh-askpass
@@ -37,36 +38,36 @@ index 1d6e298..be28411 100644
  CTR_CAVSTEST=$(libexecdir)/ctr-cavstest
 +SSH_CAVS=$(libexecdir)/ssh-cavs
  SSH_PKCS11_HELPER=$(libexecdir)/ssh-pkcs11-helper
+ SSH_SK_HELPER=$(libexecdir)/ssh-sk-helper
  PRIVSEP_PATH=@PRIVSEP_PATH@
- SSH_PRIVSEP_USER=@SSH_PRIVSEP_USER@
-@@ -61,7 +62,7 @@ EXEEXT=@EXEEXT@
- MANFMT=@MANFMT@
- MKDIR_P=@MKDIR_P@
+@@ -69,7 +70,7 @@ MKDIR_P=@MKDIR_P@
  
--TARGETS=ssh$(EXEEXT) sshd$(EXEEXT) ssh-add$(EXEEXT) ssh-keygen$(EXEEXT) ssh-keyscan${EXEEXT} ssh-keysign${EXEEXT} ssh-pkcs11-helper$(EXEEXT) ssh-agent$(EXEEXT) scp$(EXEEXT) sftp-server$(EXEEXT) sftp$(EXEEXT) ctr-cavstest$(EXEEXT)
-+TARGETS=ssh$(EXEEXT) sshd$(EXEEXT) ssh-add$(EXEEXT) ssh-keygen$(EXEEXT) ssh-keyscan${EXEEXT} ssh-keysign${EXEEXT} ssh-pkcs11-helper$(EXEEXT) ssh-agent$(EXEEXT) scp$(EXEEXT) sftp-server$(EXEEXT) sftp$(EXEEXT) ctr-cavstest$(EXEEXT) ssh-cavs$(EXEEXT)
+ .SUFFIXES: .lo
+ 
+-TARGETS=ssh$(EXEEXT) sshd$(EXEEXT) ssh-add$(EXEEXT) ssh-keygen$(EXEEXT) ssh-keyscan${EXEEXT} ssh-keysign${EXEEXT} ssh-pkcs11-helper$(EXEEXT) ssh-agent$(EXEEXT) scp$(EXEEXT) sftp-server$(EXEEXT) sftp$(EXEEXT) ssh-sk-helper$(EXEEXT) ctr-cavstest$(EXEEXT)
++TARGETS=ssh$(EXEEXT) sshd$(EXEEXT) ssh-add$(EXEEXT) ssh-keygen$(EXEEXT) ssh-keyscan${EXEEXT} ssh-keysign${EXEEXT} ssh-pkcs11-helper$(EXEEXT) ssh-agent$(EXEEXT) scp$(EXEEXT) sftp-server$(EXEEXT) sftp$(EXEEXT) ssh-sk-helper$(EXEEXT) ctr-cavstest$(EXEEXT) ssh-cavs$(EXEEXT)
  
  XMSS_OBJS=\
  	ssh-xmss.o \
-@@ -202,6 +203,9 @@ ssh-pkcs11-helper$(EXEEXT): $(LIBCOMPAT) libssh.a ssh-pkcs11-helper.o ssh-pkcs11
+@@ -236,6 +237,9 @@ ssh-sk-helper$(EXEEXT): $(LIBCOMPAT) libssh.a $(SKHELPER_OBJS)
  ctr-cavstest$(EXEEXT): $(LIBCOMPAT) libssh.a ctr-cavstest.o
  	$(LD) -o $@ ctr-cavstest.o $(LDFLAGS) -lssh -lopenbsd-compat -lssh -lfipscheck $(LIBS)
  
-+ssh-cavs$(EXEEXT): $(LIBCOMPAT) libssh.a ssh-cavs.o
-+	$(LD) -o $@ ssh-cavs.o $(LDFLAGS) -lssh -lopenbsd-compat $(LIBS)
++ssh-cavs$(EXEEXT): $(LIBCOMPAT) libssh.a ssh-cavs.o $(SKOBJS)
++	$(LD) -o $@ ssh-cavs.o $(SKOBJS) $(LDFLAGS) -lssh -lopenbsd-compat $(LIBS)
 +
- ssh-keyscan$(EXEEXT): $(LIBCOMPAT) libssh.a ssh-keyscan.o
- 	$(LD) -o $@ ssh-keyscan.o $(LDFLAGS) -lssh -lopenbsd-compat -lfipscheck -lssh $(LIBS)
+ ssh-keyscan$(EXEEXT): $(LIBCOMPAT) libssh.a $(SSHKEYSCAN_OBJS)
+ 	$(LD) -o $@ $(SSHKEYSCAN_OBJS) $(LDFLAGS) -lssh -lopenbsd-compat -lssh -lfipscheck $(LIBS)
  
-@@ -353,6 +357,8 @@ install-files:
- 	$(INSTALL) -m 0755 $(STRIP_OPT) sshd$(EXEEXT) $(DESTDIR)$(sbindir)/sshd$(EXEEXT)
- 	$(INSTALL) -m 4711 $(STRIP_OPT) ssh-keysign$(EXEEXT) $(DESTDIR)$(SSH_KEYSIGN)$(EXEEXT)
+@@ -394,6 +398,8 @@ install-files:
+ 	$(INSTALL) -m 0755 $(STRIP_OPT) ssh-pkcs11-helper$(EXEEXT) $(DESTDIR)$(SSH_PKCS11_HELPER)$(EXEEXT)
+ 	$(INSTALL) -m 0755 $(STRIP_OPT) ssh-sk-helper$(EXEEXT) $(DESTDIR)$(SSH_SK_HELPER)$(EXEEXT)
  	$(INSTALL) -m 0755 $(STRIP_OPT) ctr-cavstest$(EXEEXT) $(DESTDIR)$(libexecdir)/ctr-cavstest$(EXEEXT)
 +	$(INSTALL) -m 0755 $(STRIP_OPT) ssh-cavs$(EXEEXT) $(DESTDIR)$(libexecdir)/ssh-cavs$(EXEEXT)
 +	$(INSTALL) -m 0755 $(STRIP_OPT) ssh-cavs_driver.pl $(DESTDIR)$(libexecdir)/ssh-cavs_driver.pl
- 	$(INSTALL) -m 0755 $(STRIP_OPT) ssh-pkcs11-helper$(EXEEXT) $(DESTDIR)$(SSH_PKCS11_HELPER)$(EXEEXT)
  	$(INSTALL) -m 0755 $(STRIP_OPT) sftp$(EXEEXT) $(DESTDIR)$(bindir)/sftp$(EXEEXT)
  	$(INSTALL) -m 0755 $(STRIP_OPT) sftp-server$(EXEEXT) $(DESTDIR)$(SFTP_SERVER)$(EXEEXT)
+ 	$(INSTALL) -m 644 ssh.1.out $(DESTDIR)$(mandir)/$(mansubdir)1/ssh.1
 diff --git a/ssh-cavs.c b/ssh-cavs.c
 new file mode 100644
 index 0000000..b74ae7f
