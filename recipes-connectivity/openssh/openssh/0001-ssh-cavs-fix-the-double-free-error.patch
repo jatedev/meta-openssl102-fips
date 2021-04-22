@@ -1,0 +1,161 @@
+From b6202d402a27467a8a4bacaca4064ee731a03fa7 Mon Sep 17 00:00:00 2001
+From: Yi Zhao <yi.zhao@windriver.com>
+Date: Sun, 17 Jan 2021 11:17:53 +0800
+Subject: [PATCH] ssh-cavs: fix the double free error
+
+There is a 'double free or corruption' error when running ssh-cavs:
+$ /usr/libexec/ssh-cavs -K
+0055d50f2d163cc07cd8a93cc7c3430c30ce786b572c01ad29fec7597000cf8618d664e2ec3dcbc8bb7a1a7eb7ef67f61cdaf291625da879186ac0a5cb27af571b59612d6a6e0627344d846271959fda61c78354aa498773d59762f8ca2d0215ec590d8633de921f920d41e47b3de6ab9a3d0869e1c826d0e4adebf8e3fb646a15dea20a410b44e969f4b791ed6a67f13f1b74234004d5fa5e87eff7abc32d49bbdf44d7b0107e8f10609233b7e2b7eff74a4daf25641de7553975dac6ac1e5117df6f6dbaa1c263d23a6c3e5a3d7d49ae8a828c1e333ac3f85fbbf57b5c1a45be45e43a7be1a4707eac779b8285522d1f531fe23f890fd38a004339932b93eda4
+-H d3ab91a850febb417a25d892ec48ed5952c7a5de -s d3ab91a850febb417a25d892ec48ed5952c7a5de -i 8 -e 24 -m 20
+Initial IV (client to server) = 4bb320d1679dfd3a
+Initial IV (server to client) = 43dea6fdf263a308
+Encryption key (client to server) = 13048cc600b9d3cf9095aa6cf8e2ff9cf1c54ca0520c89ed
+Encryption key (server to client) = 1e483c5134e901aa11fc4e0a524e7ec7b75556148a222bb0
+Integrity key (client to server) = ecef63a092b0dcc585bdc757e01b2740af57d640
+Integrity key (server to client) = 7424b05f3c44a72b4ebd281fb71f9cbe7b64d479
+double free or corruption (out)
+Aborted
+
+Since openssh 8.x, the ssh->kex has been allocated when struct ssh is
+initialized in function ssh_alloc_session_state()[1] and will be freed
+in function ssh_packet_close()[2]. We don't need to make the ssh->kex to
+point a extra kex struct which will cause the memory corruption and
+memory leak.
+
+[1] https://github.com/openssh/openssh-portable/commit/0a843d9a0e805f14653a555f5c7a8ba99d62c12d
+[2] https://github.com/openssh/openssh-portable/commit/55ef3e9cbd5b336bd0f89205716924886fcf86de
+
+Upstream-Status: Pending
+
+Signed-off-by: Yi Zhao <yi.zhao@windriver.com>
+---
+ ssh-cavs.c | 60 ++++++++++++++++++++++++------------------------------
+ 1 file changed, 27 insertions(+), 33 deletions(-)
+
+diff --git a/ssh-cavs.c b/ssh-cavs.c
+index b74ae7f..641a453 100644
+--- a/ssh-cavs.c
++++ b/ssh-cavs.c
+@@ -164,7 +164,6 @@ struct kdf_cavs {
+ static int sshkdf_cavs(struct kdf_cavs *test)
+ {
+ 	int ret = 0;
+-	struct kex kex;
+ 	struct sshbuf *Kb = NULL;
+ 	BIGNUM *Kbn = NULL;
+ 	int mode = 0;
+@@ -175,8 +174,6 @@ static int sshkdf_cavs(struct kdf_cavs *test)
+ #define HEXOUTLEN 500
+ 	char hex[HEXOUTLEN];
+ 
+-	memset(&kex, 0, sizeof(struct kex));
+-
+ 	Kbn = BN_new();
+ 	BN_bin2bn(test->K, test->Klen, Kbn);
+ 	if (!Kbn) {
+@@ -192,24 +189,29 @@ static int sshkdf_cavs(struct kdf_cavs *test)
+ 	}
+ 	sshbuf_put_bignum2(Kb, Kbn);
+ 
+-	kex.session_id = test->session_id;
+-	kex.session_id_len = test->session_id_len;
++	if ((ssh = ssh_packet_set_connection(NULL, -1, -1)) == NULL){
++		printf("Allocation error\n");
++		goto out;
++	}
++
++	ssh->kex->session_id = test->session_id;
++	ssh->kex->session_id_len = test->session_id_len;
+ 
+ 	/* setup kex */
+ 
+ 	/* select the right hash based on struct ssh_digest digests */
+ 	switch (test->ik_len) {
+ 		case 20:
+-			kex.hash_alg = SSH_DIGEST_SHA1;
++			ssh->kex->hash_alg = SSH_DIGEST_SHA1;
+ 			break;
+ 		case 32:
+-			kex.hash_alg = SSH_DIGEST_SHA256;
++			ssh->kex->hash_alg = SSH_DIGEST_SHA256;
+ 			break;
+ 		case 48:
+-			kex.hash_alg = SSH_DIGEST_SHA384;
++			ssh->kex->hash_alg = SSH_DIGEST_SHA384;
+ 			break;
+ 		case 64:
+-			kex.hash_alg = SSH_DIGEST_SHA512;
++			ssh->kex->hash_alg = SSH_DIGEST_SHA512;
+ 			break;
+ 		default:
+ 			printf("Wrong hash type %u\n", test->ik_len);
+@@ -219,41 +221,35 @@ static int sshkdf_cavs(struct kdf_cavs *test)
+ 
+ 	/* implement choose_enc */
+ 	for (mode = 0; mode < 2; mode++) {
+-		kex.newkeys[mode] = calloc(1, sizeof(struct newkeys));
+-		if (!kex.newkeys[mode]) {
++		ssh->kex->newkeys[mode] = calloc(1, sizeof(struct newkeys));
++		if (!ssh->kex->newkeys[mode]) {
+ 			printf("allocation of newkeys failed\n");
+ 			ret = 1;
+ 			goto out;
+ 		}
+-		kex.newkeys[mode]->enc.iv_len = test->iv_len;
+-		kex.newkeys[mode]->enc.key_len = test->ek_len;
+-		kex.newkeys[mode]->enc.block_size = (test->iv_len == 64) ? 8 : 16;
+-		kex.newkeys[mode]->mac.key_len = test->ik_len;
++		ssh->kex->newkeys[mode]->enc.iv_len = test->iv_len;
++		ssh->kex->newkeys[mode]->enc.key_len = test->ek_len;
++		ssh->kex->newkeys[mode]->enc.block_size = (test->iv_len == 64) ? 8 : 16;
++		ssh->kex->newkeys[mode]->mac.key_len = test->ik_len;
+ 	}
+ 
+ 	/* implement kex_choose_conf */
+-	kex.we_need = kex.newkeys[0]->enc.key_len;
+-	if (kex.we_need < kex.newkeys[0]->enc.block_size)
+-		kex.we_need = kex.newkeys[0]->enc.block_size;
+-	if (kex.we_need < kex.newkeys[0]->enc.iv_len)
+-		kex.we_need = kex.newkeys[0]->enc.iv_len;
+-	if (kex.we_need < kex.newkeys[0]->mac.key_len)
+-		kex.we_need = kex.newkeys[0]->mac.key_len;
++	ssh->kex->we_need = ssh->kex->newkeys[0]->enc.key_len;
++	if (ssh->kex->we_need < ssh->kex->newkeys[0]->enc.block_size)
++		ssh->kex->we_need = ssh->kex->newkeys[0]->enc.block_size;
++	if (ssh->kex->we_need < ssh->kex->newkeys[0]->enc.iv_len)
++		ssh->kex->we_need = ssh->kex->newkeys[0]->enc.iv_len;
++	if (ssh->kex->we_need < ssh->kex->newkeys[0]->mac.key_len)
++		ssh->kex->we_need = ssh->kex->newkeys[0]->mac.key_len;
+ 
+ 	/* MODE_OUT (1) -> server to client
+ 	 * MODE_IN (0) -> client to server */
+-	kex.server = 1;
++	ssh->kex->server = 1;
+ 
+-	/* do it */
+-	if ((ssh = ssh_packet_set_connection(NULL, -1, -1)) == NULL){
+-		printf("Allocation error\n");
+-		goto out;
+-	}
+-	ssh->kex = &kex;
+ 	kex_derive_keys(ssh, test->H, test->Hlen, Kb);
+ 
+-	ctoskeys = kex.newkeys[0];
+-	stockeys = kex.newkeys[1];
++	ctoskeys = ssh->kex->newkeys[0];
++	stockeys = ssh->kex->newkeys[1];
+ 
+ 	/* get data */
+ 	memset(hex, 0, HEXOUTLEN);
+@@ -376,8 +372,6 @@ int main(int argc, char *argv[])
+ 	ret = sshkdf_cavs(&test);
+ 
+ out:
+-	if (test.session_id)
+-		free(test.session_id);
+ 	if (test.K)
+ 		free(test.K);
+ 	if (test.H)
+-- 
+2.17.1
+
