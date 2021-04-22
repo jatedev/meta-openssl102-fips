@@ -1,4 +1,4 @@
-From 059b61a58b27c40fbb78b3930cdcf110ff717340 Mon Sep 17 00:00:00 2001
+From 0452f9dc4acf90b8d7ac6ddf6ebbe455d202ce54 Mon Sep 17 00:00:00 2001
 From: Hongxu Jia <hongxu.jia@windriver.com>
 Date: Sat, 21 Dec 2019 11:45:38 +0800
 Subject: [PATCH] openssh 8.4p1 fips
@@ -38,7 +38,7 @@ Signed-off-by: Yi Zhao <yi.zhao@windriver.com>
  14 files changed, 171 insertions(+), 20 deletions(-)
 
 diff --git a/Makefile.in b/Makefile.in
-index acfb919..5b2c397 100644
+index e3cd296..bf53fb0 100644
 --- a/Makefile.in
 +++ b/Makefile.in
 @@ -204,25 +204,25 @@ libssh.a: $(LIBSSH_OBJS)
@@ -97,7 +97,7 @@ index 32771f2..74fac3b 100644
  	return (&aes_ctr);
  }
 diff --git a/dh.c b/dh.c
-index 7cb135d..306f1bc 100644
+index b5bb35e..676f893 100644
 --- a/dh.c
 +++ b/dh.c
 @@ -152,6 +152,12 @@ choose_dh(int min, int wantbits, int max)
@@ -165,10 +165,10 @@ index 5d6df62..54c7aa2 100644
  u_int	 dh_estimate(int);
  
 diff --git a/kex.c b/kex.c
-index aecb939..3d5d3b0 100644
+index 30425ab..1250f42 100644
 --- a/kex.c
 +++ b/kex.c
-@@ -163,7 +163,10 @@ kex_names_valid(const char *names)
+@@ -165,7 +165,10 @@ kex_names_valid(const char *names)
  	for ((p = strsep(&cp, ",")); p && *p != '\0';
  	    (p = strsep(&cp, ","))) {
  		if (kex_alg_by_name(p) == NULL) {
@@ -181,7 +181,7 @@ index aecb939..3d5d3b0 100644
  			return 0;
  		}
 diff --git a/kexgexc.c b/kexgexc.c
-index 323a659..812112d 100644
+index 4a2e741..2535732 100644
 --- a/kexgexc.c
 +++ b/kexgexc.c
 @@ -28,6 +28,7 @@
@@ -192,7 +192,7 @@ index 323a659..812112d 100644
  #include <sys/types.h>
  
  #include <openssl/dh.h>
-@@ -113,6 +114,10 @@ input_kex_dh_gex_group(int type, u_int32_t seq, struct ssh *ssh)
+@@ -115,6 +116,10 @@ input_kex_dh_gex_group(int type, u_int32_t seq, struct ssh *ssh)
  		r = SSH_ERR_ALLOC_FAIL;
  		goto out;
  	}
@@ -204,7 +204,7 @@ index 323a659..812112d 100644
  
  	/* generate and send 'e', client DH public key */
 diff --git a/myproposal.h b/myproposal.h
-index 5312e60..d0accae 100644
+index f03b7df..57b8779 100644
 --- a/myproposal.h
 +++ b/myproposal.h
 @@ -57,6 +57,20 @@
@@ -255,12 +255,12 @@ index 5312e60..d0accae 100644
 +
  /* Not a KEX value, but here so all the algorithm defaults are together */
  #define	SSH_ALLOWED_CA_SIGALGS	\
- 	"ecdsa-sha2-nistp256," \
+ 	"ssh-ed25519," \
 diff --git a/readconf.c b/readconf.c
-index 554efd7..16eda65 100644
+index 724974b..870a654 100644
 --- a/readconf.c
 +++ b/readconf.c
-@@ -2255,11 +2255,16 @@ fill_default_options(Options * options)
+@@ -2475,11 +2475,16 @@ fill_default_options(Options * options)
  	all_key = sshkey_alg_list(0, 0, 1, ',');
  	all_sig = sshkey_alg_list(0, 1, 1, ',');
  	/* remove unsupported algos from default lists */
@@ -283,7 +283,7 @@ index 554efd7..16eda65 100644
  	do { \
  		if ((r = kex_assemble_names(&options->what, \
 diff --git a/sandbox-seccomp-filter.c b/sandbox-seccomp-filter.c
-index e0768c0..8971bba 100644
+index d8dc712..c6e62e4 100644
 --- a/sandbox-seccomp-filter.c
 +++ b/sandbox-seccomp-filter.c
 @@ -157,6 +157,9 @@ static const struct sock_filter preauth_insns[] = {
@@ -297,10 +297,10 @@ index e0768c0..8971bba 100644
  	SC_DENY(__NR_openat, EACCES),
  #endif
 diff --git a/servconf.c b/servconf.c
-index f08e374..dbcee84 100644
+index 9695583..98f6303 100644
 --- a/servconf.c
 +++ b/servconf.c
-@@ -213,11 +213,16 @@ assemble_algorithms(ServerOptions *o)
+@@ -218,11 +218,16 @@ assemble_algorithms(ServerOptions *o)
  	all_key = sshkey_alg_list(0, 0, 1, ',');
  	all_sig = sshkey_alg_list(0, 1, 1, ',');
  	/* remove unsupported algos from default lists */
@@ -323,10 +323,10 @@ index f08e374..dbcee84 100644
  	do { \
  		if ((r = kex_assemble_names(&o->what, defaults, all)) != 0) \
 diff --git a/ssh-keygen.c b/ssh-keygen.c
-index a12b79a..cb8e569 100644
+index cfb5f11..6451584 100644
 --- a/ssh-keygen.c
 +++ b/ssh-keygen.c
-@@ -204,6 +204,12 @@ type_bits_valid(int type, const char *name, u_int32_t *bitsp)
+@@ -205,6 +205,12 @@ type_bits_valid(int type, const char *name, u_int32_t *bitsp)
  #endif
  	}
  #ifdef WITH_OPENSSL
@@ -339,7 +339,7 @@ index a12b79a..cb8e569 100644
  	switch (type) {
  	case KEY_DSA:
  		if (*bitsp != 1024)
-@@ -1094,9 +1100,17 @@ do_gen_all_hostkeys(struct passwd *pw)
+@@ -1095,9 +1101,17 @@ do_gen_all_hostkeys(struct passwd *pw)
  			first = 1;
  			printf("%s: generating new host keys: ", __progname);
  		}
@@ -359,7 +359,7 @@ index a12b79a..cb8e569 100644
  			error("Could not save your private key in %s: %s",
  			    prv_tmp, strerror(errno));
 diff --git a/ssh.c b/ssh.c
-index f34ca0d..aabd5d3 100644
+index 53330da..729d87a 100644
 --- a/ssh.c
 +++ b/ssh.c
 @@ -77,6 +77,8 @@
@@ -371,7 +371,7 @@ index f34ca0d..aabd5d3 100644
  #include "openbsd-compat/openssl-compat.h"
  #include "openbsd-compat/sys-queue.h"
  
-@@ -662,6 +664,16 @@ main(int ac, char **av)
+@@ -652,6 +654,16 @@ main(int ac, char **av)
  	sanitise_stdfd();
  
  	__progname = ssh_get_progname(av[0]);
@@ -388,7 +388,7 @@ index f34ca0d..aabd5d3 100644
  
  #ifndef HAVE_SETPROCTITLE
  	/* Prepare for later setproctitle emulation */
-@@ -1500,6 +1512,10 @@ main(int ac, char **av)
+@@ -1506,6 +1518,10 @@ main(int ac, char **av)
  		exit(0);
  	}
  
@@ -400,7 +400,7 @@ index f34ca0d..aabd5d3 100644
  	if (options.sk_provider != NULL && *options.sk_provider == '$' &&
  	    strlen(options.sk_provider) > 1) {
 diff --git a/sshd.c b/sshd.c
-index 5af7986..1f1fcc2 100644
+index eff4778..fee4703 100644
 --- a/sshd.c
 +++ b/sshd.c
 @@ -66,6 +66,7 @@
@@ -420,7 +420,7 @@ index 5af7986..1f1fcc2 100644
  #include "openbsd-compat/openssl-compat.h"
  #endif
  
-@@ -1555,6 +1558,18 @@ main(int ac, char **av)
+@@ -1536,6 +1539,18 @@ main(int ac, char **av)
  #endif
  	__progname = ssh_get_progname(av[0]);
  
@@ -439,7 +439,7 @@ index 5af7986..1f1fcc2 100644
  	/* Save argv. Duplicate so setproctitle emulation doesn't clobber it */
  	saved_argc = ac;
  	rexec_argc = ac;
-@@ -2039,6 +2054,10 @@ main(int ac, char **av)
+@@ -2017,6 +2032,10 @@ main(int ac, char **av)
  	/* Reinitialize the log (because of the fork above). */
  	log_init(__progname, options.log_level, options.log_facility, log_stderr);
  
@@ -451,7 +451,7 @@ index 5af7986..1f1fcc2 100644
  	   unmounted if desired. */
  	if (chdir("/") == -1)
 diff --git a/sshkey.c b/sshkey.c
-index ac451f1..4f72eab 100644
+index b25c59a..8fcfe22 100644
 --- a/sshkey.c
 +++ b/sshkey.c
 @@ -34,6 +34,7 @@

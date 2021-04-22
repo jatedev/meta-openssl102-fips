@@ -1,4 +1,4 @@
-From 571b24129e3c3a84e38a59a32aa61fa40e04e1e2 Mon Sep 17 00:00:00 2001
+From 48888de317391522186c6ae24a8d6d7d7add2673 Mon Sep 17 00:00:00 2001
 From: Hongxu Jia <hongxu.jia@windriver.com>
 Date: Sat, 21 Dec 2019 13:03:23 +0800
 Subject: [PATCH] conditional enable fips mode
@@ -44,10 +44,10 @@ index 06566d3..a10566d 100644
  	sanitise_stdfd();
  
 diff --git a/sftp-server.c b/sftp-server.c
-index 55386fa..8c1634e 100644
+index 7300900..42da9d7 100644
 --- a/sftp-server.c
 +++ b/sftp-server.c
-@@ -1577,6 +1577,7 @@ sftp_server_main(int argc, char **argv, struct passwd *user_pw)
+@@ -1616,6 +1616,7 @@ sftp_server_main(int argc, char **argv, struct passwd *user_pw)
  	extern char *optarg;
  	extern char *__progname;
  
@@ -56,10 +56,10 @@ index 55386fa..8c1634e 100644
  	log_init(__progname, log_level, log_facility, log_stderr);
  
 diff --git a/sftp.c b/sftp.c
-index c88c861..171bc56 100644
+index fb3c08d..85b9b67 100644
 --- a/sftp.c
 +++ b/sftp.c
-@@ -2390,6 +2390,7 @@ main(int argc, char **argv)
+@@ -2345,6 +2345,7 @@ main(int argc, char **argv)
  	size_t num_requests = DEFAULT_NUM_REQUESTS;
  	long long limit_kbps = 0;
  
@@ -68,10 +68,10 @@ index c88c861..171bc56 100644
  	sanitise_stdfd();
  	msetlocale();
 diff --git a/ssh-add.c b/ssh-add.c
-index 936dc21..b7ac2d2 100644
+index 7edb9f9..c75f85b 100644
 --- a/ssh-add.c
 +++ b/ssh-add.c
-@@ -671,6 +671,7 @@ main(int argc, char **argv)
+@@ -667,6 +667,7 @@ main(int argc, char **argv)
  	SyslogFacility log_facility = SYSLOG_FACILITY_AUTH;
  	LogLevel log_level = SYSLOG_LEVEL_INFO;
  
@@ -80,10 +80,10 @@ index 936dc21..b7ac2d2 100644
  	sanitise_stdfd();
  
 diff --git a/ssh-agent.c b/ssh-agent.c
-index e1fd1f3..da49b57 100644
+index 58fe6dd..9018a7c 100644
 --- a/ssh-agent.c
 +++ b/ssh-agent.c
-@@ -1289,6 +1289,7 @@ main(int ac, char **av)
+@@ -1388,6 +1388,7 @@ main(int ac, char **av)
  	size_t npfd = 0;
  	u_int maxfds;
  
@@ -92,10 +92,10 @@ index e1fd1f3..da49b57 100644
  	sanitise_stdfd();
  
 diff --git a/ssh-keygen.c b/ssh-keygen.c
-index cb8e569..67c7d62 100644
+index 6451584..246caa1 100644
 --- a/ssh-keygen.c
 +++ b/ssh-keygen.c
-@@ -3184,6 +3184,7 @@ main(int argc, char **argv)
+@@ -3153,6 +3153,7 @@ main(int argc, char **argv)
  	extern int optind;
  	extern char *optarg;
  
@@ -104,7 +104,7 @@ index cb8e569..67c7d62 100644
  	sanitise_stdfd();
  
 diff --git a/ssh-keyscan.c b/ssh-keyscan.c
-index ca19042..c667f2c 100644
+index 7abbcbf..b604bfd 100644
 --- a/ssh-keyscan.c
 +++ b/ssh-keyscan.c
 @@ -667,6 +667,7 @@ main(int argc, char **argv)
@@ -116,7 +116,7 @@ index ca19042..c667f2c 100644
  	seed_rng();
  	TAILQ_INIT(&tq);
 diff --git a/ssh-keysign.c b/ssh-keysign.c
-index 7991e0f..26a3bab 100644
+index 907162d..294148a 100644
 --- a/ssh-keysign.c
 +++ b/ssh-keysign.c
 @@ -173,6 +173,7 @@ main(int argc, char **argv)
@@ -128,10 +128,10 @@ index 7991e0f..26a3bab 100644
  		fatal("%s: pledge: %s", __progname, strerror(errno));
  
 diff --git a/ssh-pkcs11-helper.c b/ssh-pkcs11-helper.c
-index d73e835..e508684 100644
+index a9a6fe3..3c76f70 100644
 --- a/ssh-pkcs11-helper.c
 +++ b/ssh-pkcs11-helper.c
-@@ -332,6 +332,7 @@ main(int argc, char **argv)
+@@ -326,6 +326,7 @@ main(int argc, char **argv)
  	extern char *__progname;
  	struct pollfd pfd[2];
  
@@ -140,22 +140,22 @@ index d73e835..e508684 100644
  	seed_rng();
  	TAILQ_INIT(&pkcs11_keylist);
 diff --git a/ssh.c b/ssh.c
-index aabd5d3..81393f1 100644
+index 729d87a..ab78b53 100644
 --- a/ssh.c
 +++ b/ssh.c
-@@ -660,6 +660,7 @@ main(int ac, char **av)
- 	size_t n, len;
+@@ -650,6 +650,7 @@ main(int ac, char **av)
  	u_int j;
+ 	struct ssh_conn_info *cinfo = NULL;
  
 +	ssh_enable_fips_mode();
  	/* Ensure that fds 0, 1 and 2 are open or directed to /dev/null */
  	sanitise_stdfd();
  
 diff --git a/sshd.c b/sshd.c
-index 1f1fcc2..0f68419 100644
+index fee4703..07faf7b 100644
 --- a/sshd.c
 +++ b/sshd.c
-@@ -1553,6 +1553,7 @@ main(int ac, char **av)
+@@ -1534,6 +1534,7 @@ main(int ac, char **av)
  	Authctxt *authctxt;
  	struct connection_info *connection_info = NULL;
  
