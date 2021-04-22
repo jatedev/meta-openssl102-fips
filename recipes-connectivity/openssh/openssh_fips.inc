@@ -11,6 +11,7 @@ SRC_URI += " \
     file://openssh-6.6p1-ctr-cavstest.patch \
     file://openssh-6.7p1-kdf-cavs.patch \
     file://0001-ssh-cavs-fix-the-double-free-error.patch \
+    file://0001-ssh-cavs-set-kex-sessin_id-via-sshbuf_put.patch \
 "
 
 do_install_append() {

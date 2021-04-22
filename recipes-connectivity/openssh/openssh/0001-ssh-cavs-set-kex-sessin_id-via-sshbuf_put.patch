@@ -1,0 +1,45 @@
+From 3841d7c1057e62a57c49e5042080202739c9bf98 Mon Sep 17 00:00:00 2001
+From: Yi Zhao <yi.zhao@windriver.com>
+Date: Thu, 8 Apr 2021 15:09:21 +0800
+Subject: [PATCH] ssh-cavs: set kex->sessin_id via sshbuf_put
+
+The kex->session_id has been replaced from u_char * to sshbuf and
+kex->session_id_len has been removed in openssh 8.5[1]. Update ssh-cavs
+to adapt it.
+
+Fixes:
+ssh-cavs.c:198:12: error: 'struct kex' has no member named 'session_id_len'; did you mean 'session_id'?
+  198 |  ssh->kex->session_id_len = test->session_id_len;
+      |            ^~~~~~~~~~~~~~
+      |            session_id
+
+[1] https://github.com/openssh/openssh-portable/commit/39be3dc209f28f9c1ebfeba42adde8963b01e1cd
+
+Upstream-Status: Inappropriate [oe specific]
+
+Signed-off-by: Yi Zhao <yi.zhao@windriver.com>
+---
+ ssh-cavs.c | 7 +++++--
+ 1 file changed, 5 insertions(+), 2 deletions(-)
+
+diff --git a/ssh-cavs.c b/ssh-cavs.c
+index 641a453..48bae74 100644
+--- a/ssh-cavs.c
++++ b/ssh-cavs.c
+@@ -194,8 +194,11 @@ static int sshkdf_cavs(struct kdf_cavs *test)
+ 		goto out;
+ 	}
+ 
+-	ssh->kex->session_id = test->session_id;
+-	ssh->kex->session_id_len = test->session_id_len;
++	if (sshbuf_put(ssh->kex->session_id, test->session_id, test->session_id_len) != 0) {
++		printf("cannot convert session_id into sshbuf\n");
++		ret = 1;
++		goto out;
++	}
+ 
+ 	/* setup kex */
+ 
+-- 
+2.17.1
+
