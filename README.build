@@ -254,3 +254,31 @@ Note this sample command is functionally equivalent to:
 $ env OPENSSL_FIPS=1 openssl sha1 -hmac etaonrishdlcupfm fips_hmac.c
 HMAC-SHA1(fips_hmac.c)= ae25ad68d9a8cc04075100563a437fa37829afcc
 
+=======================
+Known Issues
+=======================
+If the CPU on target machine which building FIPS object module is newer than
+Nehalem (e.g. Sandy Brigde) or is an Intel Atom processor. Then you may
+encounter an error when building openssl with the FIPS object module:
+qemu: uncaught target signal 4 (Illegal instruction).
+
+The current processor emulated in qemu is set to Nehalem. But the GCC will use
+-march=native to enable all instruction subsets supported by the target machine
+when building FIPS object module. The illegal instruction error will occur if
+some instruction subsets (e.g AVX/AVX2) are not supported by Nehalem.
+
+To check if the CPU is Intel Atom:
+$ cat /proc/cpuinfo | grep "Atom"
+
+To check if the CPU supports AVX/AVX2:
+$ cat /proc/cpuinfo | grep "avx"
+Or:
+$ gcc -dM -E - < /dev/null | grep "AVX"
+
+As a workaround, we can specify -march=nehalem in GCC before build the FIPS
+object module:
+$ export CC="gcc -march=nehalem"
+$ ./config [no-asm]
+$ make
+$ make install
+
