@@ -1,7 +1,7 @@
-From c51dd44e1c594ddeb3a27ae5d9be2899e4bf2ac6 Mon Sep 17 00:00:00 2001
+From 059b61a58b27c40fbb78b3930cdcf110ff717340 Mon Sep 17 00:00:00 2001
 From: Hongxu Jia <hongxu.jia@windriver.com>
 Date: Sat, 21 Dec 2019 11:45:38 +0800
-Subject: [PATCH] openssh 8.2p1 fips
+Subject: [PATCH] openssh 8.4p1 fips
 
 Port openssh-7.7p1-fips.patch from Fedora
 https://src.fedoraproject.org/rpms/openssh.git
@@ -13,10 +13,16 @@ Signed-off-by: Hongxu Jia <hongxu.jia@windriver.com>
 
 Rebase to 8.2p1
 Signed-off-by: Yi Zhao <yi.zhao@windriver.com>
+
+Rebase to 8.4p1
+Port openssh-7.7p1-fips.patch from Fedora
+https://src.fedoraproject.org/rpms/openssh.git
+(commit: fbd5f1bee2e2cdc7b1b47f4604b8347d8c3ed63f)
+
+Signed-off-by: Yi Zhao <yi.zhao@windriver.com>
 ---
  Makefile.in              | 14 +++++++-------
  cipher-ctr.c             |  3 ++-
- clientloop.c             |  2 +-
  dh.c                     | 40 ++++++++++++++++++++++++++++++++++++++++
  dh.h                     |  1 +
  kex.c                    |  5 ++++-
@@ -27,21 +33,20 @@ Signed-off-by: Yi Zhao <yi.zhao@windriver.com>
  servconf.c               | 15 ++++++++++-----
  ssh-keygen.c             | 16 +++++++++++++++-
  ssh.c                    | 16 ++++++++++++++++
- sshconnect2.c            |  8 ++++++--
  sshd.c                   | 19 +++++++++++++++++++
  sshkey.c                 |  4 ++++
- 16 files changed, 178 insertions(+), 23 deletions(-)
+ 14 files changed, 171 insertions(+), 20 deletions(-)
 
 diff --git a/Makefile.in b/Makefile.in
-index e754947..57f94f4 100644
+index acfb919..5b2c397 100644
 --- a/Makefile.in
 +++ b/Makefile.in
-@@ -206,25 +206,25 @@ libssh.a: $(LIBSSH_OBJS)
+@@ -204,25 +204,25 @@ libssh.a: $(LIBSSH_OBJS)
  	$(RANLIB) $@
  
  ssh$(EXEEXT): $(LIBCOMPAT) libssh.a $(SSHOBJS)
--	$(LD) -o $@ $(SSHOBJS) $(LDFLAGS) -lssh -lopenbsd-compat $(SSHLIBS) $(LIBS) $(GSSLIBS)
-+	$(LD) -o $@ $(SSHOBJS) $(LDFLAGS) -lssh -lopenbsd-compat -lfipscheck $(SSHLIBS) $(LIBS) $(GSSLIBS)
+-	$(LD) -o $@ $(SSHOBJS) $(LDFLAGS) -lssh -lopenbsd-compat $(LIBS) $(GSSLIBS)
++	$(LD) -o $@ $(SSHOBJS) $(LDFLAGS) -lssh -lopenbsd-compat -lfipscheck $(LIBS) $(GSSLIBS)
  
  sshd$(EXEEXT): libssh.a	$(LIBCOMPAT) $(SSHDOBJS)
 -	$(LD) -o $@ $(SSHDOBJS) $(LDFLAGS) -lssh -lopenbsd-compat $(SSHDLIBS) $(LIBS) $(GSSLIBS) $(K5LIBS)
@@ -68,7 +73,7 @@ index e754947..57f94f4 100644
  
  ssh-pkcs11-helper$(EXEEXT): $(LIBCOMPAT) libssh.a $(P11HELPER_OBJS)
  	$(LD) -o $@ $(P11HELPER_OBJS) $(LDFLAGS) -lssh -lopenbsd-compat -lssh -lopenbsd-compat $(LIBS)
-@@ -233,7 +233,7 @@ ssh-sk-helper$(EXEEXT): $(LIBCOMPAT) libssh.a $(SKHELPER_OBJS)
+@@ -231,7 +231,7 @@ ssh-sk-helper$(EXEEXT): $(LIBCOMPAT) libssh.a $(SKHELPER_OBJS)
  	$(LD) -o $@ $(SKHELPER_OBJS) $(LDFLAGS) -lssh -lopenbsd-compat -lssh -lopenbsd-compat $(LIBS) $(LIBFIDO2)
  
  ssh-keyscan$(EXEEXT): $(LIBCOMPAT) libssh.a $(SSHKEYSCAN_OBJS)
@@ -91,19 +96,6 @@ index 32771f2..74fac3b 100644
  #endif
  	return (&aes_ctr);
  }
-diff --git a/clientloop.c b/clientloop.c
-index ebd0dbc..b3e0c19 100644
---- a/clientloop.c
-+++ b/clientloop.c
-@@ -2083,7 +2083,7 @@ static int
- key_accepted_by_hostkeyalgs(const struct sshkey *key)
- {
- 	const char *ktype = sshkey_ssh_name(key);
--	const char *hostkeyalgs = options.hostkeyalgorithms;
-+	const char *hostkeyalgs = (FIPS_mode() ? KEX_FIPS_PK_ALG : options.hostkeyalgorithms);
- 
- 	if (key == NULL || key->type == KEY_UNSPEC)
- 		return 0;
 diff --git a/dh.c b/dh.c
 index 7cb135d..306f1bc 100644
 --- a/dh.c
@@ -173,7 +165,7 @@ index 5d6df62..54c7aa2 100644
  u_int	 dh_estimate(int);
  
 diff --git a/kex.c b/kex.c
-index ce85f04..9cc14de 100644
+index aecb939..3d5d3b0 100644
 --- a/kex.c
 +++ b/kex.c
 @@ -163,7 +163,10 @@ kex_names_valid(const char *names)
@@ -265,36 +257,36 @@ index 5312e60..d0accae 100644
  #define	SSH_ALLOWED_CA_SIGALGS	\
  	"ecdsa-sha2-nistp256," \
 diff --git a/readconf.c b/readconf.c
-index f3cac6b..26b9a59 100644
+index 554efd7..16eda65 100644
 --- a/readconf.c
 +++ b/readconf.c
-@@ -2187,11 +2187,16 @@ fill_default_options(Options * options)
+@@ -2255,11 +2255,16 @@ fill_default_options(Options * options)
  	all_key = sshkey_alg_list(0, 0, 1, ',');
  	all_sig = sshkey_alg_list(0, 1, 1, ',');
  	/* remove unsupported algos from default lists */
--	def_cipher = match_filter_whitelist(KEX_CLIENT_ENCRYPT, all_cipher);
--	def_mac = match_filter_whitelist(KEX_CLIENT_MAC, all_mac);
--	def_kex = match_filter_whitelist(KEX_CLIENT_KEX, all_kex);
--	def_key = match_filter_whitelist(KEX_DEFAULT_PK_ALG, all_key);
--	def_sig = match_filter_whitelist(SSH_ALLOWED_CA_SIGALGS, all_sig);
-+	def_cipher = match_filter_whitelist((FIPS_mode() ?
+-	def_cipher = match_filter_allowlist(KEX_CLIENT_ENCRYPT, all_cipher);
+-	def_mac = match_filter_allowlist(KEX_CLIENT_MAC, all_mac);
+-	def_kex = match_filter_allowlist(KEX_CLIENT_KEX, all_kex);
+-	def_key = match_filter_allowlist(KEX_DEFAULT_PK_ALG, all_key);
+-	def_sig = match_filter_allowlist(SSH_ALLOWED_CA_SIGALGS, all_sig);
++	def_cipher = match_filter_allowlist((FIPS_mode() ?
 +	    KEX_FIPS_ENCRYPT : KEX_CLIENT_ENCRYPT), all_cipher);
-+	def_mac = match_filter_whitelist((FIPS_mode() ?
++	def_mac = match_filter_allowlist((FIPS_mode() ?
 +	    KEX_FIPS_MAC : KEX_CLIENT_MAC), all_mac);
-+	def_kex = match_filter_whitelist((FIPS_mode() ?
++	def_kex = match_filter_allowlist((FIPS_mode() ?
 +	    KEX_DEFAULT_KEX_FIPS : KEX_CLIENT_KEX), all_kex);
-+	def_key = match_filter_whitelist((FIPS_mode() ?
++	def_key = match_filter_allowlist((FIPS_mode() ?
 +	    KEX_FIPS_PK_ALG : KEX_DEFAULT_PK_ALG), all_key);
-+	def_sig = match_filter_whitelist((FIPS_mode() ?
++	def_sig = match_filter_allowlist((FIPS_mode() ?
 +	    KEX_FIPS_PK_ALG : SSH_ALLOWED_CA_SIGALGS), all_sig);
  #define ASSEMBLE(what, defaults, all) \
  	do { \
  		if ((r = kex_assemble_names(&options->what, \
 diff --git a/sandbox-seccomp-filter.c b/sandbox-seccomp-filter.c
-index f80981f..00702a7 100644
+index e0768c0..8971bba 100644
 --- a/sandbox-seccomp-filter.c
 +++ b/sandbox-seccomp-filter.c
-@@ -156,6 +156,9 @@ static const struct sock_filter preauth_insns[] = {
+@@ -157,6 +157,9 @@ static const struct sock_filter preauth_insns[] = {
  #ifdef __NR_open
  	SC_DENY(__NR_open, EACCES),
  #endif
@@ -305,33 +297,33 @@ index f80981f..00702a7 100644
  	SC_DENY(__NR_openat, EACCES),
  #endif
 diff --git a/servconf.c b/servconf.c
-index 70f5f73..815beaf 100644
+index f08e374..dbcee84 100644
 --- a/servconf.c
 +++ b/servconf.c
-@@ -212,11 +212,16 @@ assemble_algorithms(ServerOptions *o)
+@@ -213,11 +213,16 @@ assemble_algorithms(ServerOptions *o)
  	all_key = sshkey_alg_list(0, 0, 1, ',');
  	all_sig = sshkey_alg_list(0, 1, 1, ',');
  	/* remove unsupported algos from default lists */
--	def_cipher = match_filter_whitelist(KEX_SERVER_ENCRYPT, all_cipher);
--	def_mac = match_filter_whitelist(KEX_SERVER_MAC, all_mac);
--	def_kex = match_filter_whitelist(KEX_SERVER_KEX, all_kex);
--	def_key = match_filter_whitelist(KEX_DEFAULT_PK_ALG, all_key);
--	def_sig = match_filter_whitelist(SSH_ALLOWED_CA_SIGALGS, all_sig);
-+	def_cipher = match_filter_whitelist((FIPS_mode() ?
+-	def_cipher = match_filter_allowlist(KEX_SERVER_ENCRYPT, all_cipher);
+-	def_mac = match_filter_allowlist(KEX_SERVER_MAC, all_mac);
+-	def_kex = match_filter_allowlist(KEX_SERVER_KEX, all_kex);
+-	def_key = match_filter_allowlist(KEX_DEFAULT_PK_ALG, all_key);
+-	def_sig = match_filter_allowlist(SSH_ALLOWED_CA_SIGALGS, all_sig);
++	def_cipher = match_filter_allowlist((FIPS_mode() ?
 +	    KEX_FIPS_ENCRYPT : KEX_SERVER_ENCRYPT), all_cipher);
-+	def_mac = match_filter_whitelist((FIPS_mode() ?
++	def_mac = match_filter_allowlist((FIPS_mode() ?
 +	    KEX_FIPS_MAC : KEX_SERVER_MAC), all_mac);
-+	def_kex = match_filter_whitelist((FIPS_mode() ?
++	def_kex = match_filter_allowlist((FIPS_mode() ?
 +	    KEX_DEFAULT_KEX_FIPS : KEX_SERVER_KEX), all_kex);
-+	def_key = match_filter_whitelist((FIPS_mode() ?
++	def_key = match_filter_allowlist((FIPS_mode() ?
 +	    KEX_FIPS_PK_ALG : KEX_DEFAULT_PK_ALG), all_key);
-+	def_sig = match_filter_whitelist((FIPS_mode() ?
++	def_sig = match_filter_allowlist((FIPS_mode() ?
 +	    KEX_FIPS_PK_ALG : SSH_ALLOWED_CA_SIGALGS), all_sig);
  #define ASSEMBLE(what, defaults, all) \
  	do { \
  		if ((r = kex_assemble_names(&o->what, defaults, all)) != 0) \
 diff --git a/ssh-keygen.c b/ssh-keygen.c
-index 0d6ed1f..feafe73 100644
+index a12b79a..cb8e569 100644
 --- a/ssh-keygen.c
 +++ b/ssh-keygen.c
 @@ -204,6 +204,12 @@ type_bits_valid(int type, const char *name, u_int32_t *bitsp)
@@ -347,7 +339,7 @@ index 0d6ed1f..feafe73 100644
  	switch (type) {
  	case KEY_DSA:
  		if (*bitsp != 1024)
-@@ -1088,9 +1094,17 @@ do_gen_all_hostkeys(struct passwd *pw)
+@@ -1094,9 +1100,17 @@ do_gen_all_hostkeys(struct passwd *pw)
  			first = 1;
  			printf("%s: generating new host keys: ", __progname);
  		}
@@ -364,10 +356,10 @@ index 0d6ed1f..feafe73 100644
  		fflush(stdout);
 -		type = sshkey_type_from_name(key_types[i].key_type);
  		if ((fd = mkstemp(prv_tmp)) == -1) {
- 			error("Could not save your public key in %s: %s",
+ 			error("Could not save your private key in %s: %s",
  			    prv_tmp, strerror(errno));
 diff --git a/ssh.c b/ssh.c
-index 15aee56..49331fc 100644
+index f34ca0d..aabd5d3 100644
 --- a/ssh.c
 +++ b/ssh.c
 @@ -77,6 +77,8 @@
@@ -379,7 +371,7 @@ index 15aee56..49331fc 100644
  #include "openbsd-compat/openssl-compat.h"
  #include "openbsd-compat/sys-queue.h"
  
-@@ -608,6 +610,16 @@ main(int ac, char **av)
+@@ -662,6 +664,16 @@ main(int ac, char **av)
  	sanitise_stdfd();
  
  	__progname = ssh_get_progname(av[0]);
@@ -396,52 +388,19 @@ index 15aee56..49331fc 100644
  
  #ifndef HAVE_SETPROCTITLE
  	/* Prepare for later setproctitle emulation */
-@@ -622,6 +634,10 @@ main(int ac, char **av)
- 
- 	seed_rng();
+@@ -1500,6 +1512,10 @@ main(int ac, char **av)
+ 		exit(0);
+ 	}
  
 +	if (FIPS_mode()) {
 +		logit("FIPS mode initialized");
 +	}
 +
- 	/*
- 	 * Discard other fds that are hanging around. These can cause problem
- 	 * with backgrounded ssh processes started by ControlPersist.
-diff --git a/sshconnect2.c b/sshconnect2.c
-index af00fb3..639fc51 100644
---- a/sshconnect2.c
-+++ b/sshconnect2.c
-@@ -44,6 +44,8 @@
- #include <vis.h>
- #endif
- 
-+#include <openssl/crypto.h>
-+
- #include "openbsd-compat/sys-queue.h"
- 
- #include "xmalloc.h"
-@@ -119,7 +121,8 @@ order_hostkeyalgs(char *host, struct sockaddr *hostaddr, u_short port)
- 	for (i = 0; i < options.num_system_hostfiles; i++)
- 		load_hostkeys(hostkeys, hostname, options.system_hostfiles[i]);
- 
--	oavail = avail = xstrdup(options.hostkeyalgorithms);
-+	oavail = avail = xstrdup((FIPS_mode()
-+	    ? KEX_FIPS_PK_ALG : options.hostkeyalgorithms));
- 	maxlen = strlen(avail) + 1;
- 	first = xmalloc(maxlen);
- 	last = xmalloc(maxlen);
-@@ -179,7 +182,8 @@ ssh_kex2(struct ssh *ssh, char *host, struct sockaddr *hostaddr, u_short port)
- 	/* Expand or fill in HostkeyAlgorithms */
- 	all_key = sshkey_alg_list(0, 0, 1, ',');
- 	if (kex_assemble_names(&options.hostkeyalgorithms,
--	    kex_default_pk_alg(), all_key) != 0)
-+	    (FIPS_mode() ? KEX_FIPS_PK_ALG : kex_default_pk_alg()),
-+	    all_key) != 0)
- 		fatal("%s: kex_assemble_namelist", __func__);
- 	free(all_key);
- 
+ 	/* Expand SecurityKeyProvider if it refers to an environment variable */
+ 	if (options.sk_provider != NULL && *options.sk_provider == '$' &&
+ 	    strlen(options.sk_provider) > 1) {
 diff --git a/sshd.c b/sshd.c
-index 5b9a0b5..b86d682 100644
+index 5af7986..1f1fcc2 100644
 --- a/sshd.c
 +++ b/sshd.c
 @@ -66,6 +66,7 @@
@@ -461,7 +420,7 @@ index 5b9a0b5..b86d682 100644
  #include "openbsd-compat/openssl-compat.h"
  #endif
  
-@@ -1516,6 +1519,18 @@ main(int ac, char **av)
+@@ -1555,6 +1558,18 @@ main(int ac, char **av)
  #endif
  	__progname = ssh_get_progname(av[0]);
  
@@ -480,7 +439,7 @@ index 5b9a0b5..b86d682 100644
  	/* Save argv. Duplicate so setproctitle emulation doesn't clobber it */
  	saved_argc = ac;
  	rexec_argc = ac;
-@@ -1990,6 +2005,10 @@ main(int ac, char **av)
+@@ -2039,6 +2054,10 @@ main(int ac, char **av)
  	/* Reinitialize the log (because of the fork above). */
  	log_init(__progname, options.log_level, options.log_facility, log_stderr);
  
@@ -492,7 +451,7 @@ index 5b9a0b5..b86d682 100644
  	   unmounted if desired. */
  	if (chdir("/") == -1)
 diff --git a/sshkey.c b/sshkey.c
-index 57995ee..3fa4274 100644
+index ac451f1..4f72eab 100644
 --- a/sshkey.c
 +++ b/sshkey.c
 @@ -34,6 +34,7 @@
@@ -511,7 +470,7 @@ index 57995ee..3fa4274 100644
  #include "ssh-sk.h"
  
  #ifdef WITH_XMSS
-@@ -1597,6 +1599,8 @@ rsa_generate_private_key(u_int bits, RSA **rsap)
+@@ -1595,6 +1597,8 @@ rsa_generate_private_key(u_int bits, RSA **rsap)
  	}
  	if (!BN_set_word(f4, RSA_F4) ||
  	    !RSA_generate_key_ex(private, bits, f4, NULL)) {
@@ -521,5 +480,5 @@ index 57995ee..3fa4274 100644
  		goto out;
  	}
 -- 
-2.7.4
+2.17.1
 
