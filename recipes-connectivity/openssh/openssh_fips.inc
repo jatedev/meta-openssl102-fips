@@ -1,9 +1,9 @@
-FILESEXTRAPATHS_prepend := "${THISDIR}/openssh:"
+FILESEXTRAPATHS:prepend := "${THISDIR}/openssh:"
 DEPENDS += " \
     openssl-fips \
     fipscheck \
 "
-RRECOMMENDS_${PN}-sshd_remove = "rng-tools"
+RRECOMMENDS:${PN}-sshd:remove = "rng-tools"
 
 SRC_URI += " \
     file://0001-openssh-8.6p1-fips.patch \
@@ -14,13 +14,13 @@ SRC_URI += " \
     file://0001-ssh-cavs-set-kex-sessin_id-via-sshbuf_put.patch \
 "
 
-do_install_append() {
+do_install:append() {
     install -d ${D}${libdir}/fipscheck
 }
 
 inherit qemu
 
-pkg_postinst_append_${PN}-ssh () {
+pkg_postinst:append:${PN}-ssh () {
     if [ -n "$D" ]; then
         if ${@bb.utils.contains('MACHINE_FEATURES', 'qemu-usermode', 'true','false', d)}; then
             ${@qemu_run_binary(d, '$D', '${bindir}/fipshmac')} \
@@ -33,7 +33,7 @@ pkg_postinst_append_${PN}-ssh () {
     fi
 }
 
-pkg_postinst_append_${PN}-sshd () {
+pkg_postinst:append:${PN}-sshd () {
     if [ -n "$D" ]; then
         if ${@bb.utils.contains('MACHINE_FEATURES', 'qemu-usermode', 'true','false', d)}; then
             ${@qemu_run_binary(d, '$D', '${bindir}/fipshmac')} \
@@ -47,10 +47,10 @@ pkg_postinst_append_${PN}-sshd () {
 }
 
 PACKAGES =+ "${PN}-cavs"
-SUMMARY_${PN}-cavs = "CAVS tests for FIPS validation"
-FILES_${PN}-cavs = " \
+SUMMARY:${PN}-cavs = "CAVS tests for FIPS validation"
+FILES:${PN}-cavs = " \
     ${libexecdir}/ctr-cavstest \
     ${libexecdir}/ssh-cavs \
     ${libexecdir}/ssh-cavs_driver.pl"
 
-FILES_${PN} += "${libdir}/fipscheck"
+FILES:${PN} += "${libdir}/fipscheck"

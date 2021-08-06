@@ -44,7 +44,7 @@ to image [3]
 [2] git://git.yoctoproject.org/meta-openssl102
     Manually set 1.0.2% to openssl preferred version
     echo "PREFERRED_VERSION_openssl = '1.0.2%'" >> conf/local.conf
-[3] echo "IMAGE_INSTALL_append = ' packagegroup-core-buildessential'" >> conf/local.conf
+[3] echo "IMAGE_INSTALL:append = ' packagegroup-core-buildessential'" >> conf/local.conf
 
 The easiest way to do this with Wind River Linux is include:
 
@@ -56,7 +56,7 @@ Additionally you will need a way to get the openssl-fips module source to
 the target for the build.  Adding ssh/scp is recommended, to add these
 add the following to your local.conf file:
 
-    IMAGE_INSTALL_append = " openssh-ssh openssh-scp"
+    IMAGE_INSTALL:append = " openssh-ssh openssh-scp"
 
 If you are building with configurations that have security software enabled,
 such as SE Linux, you may be required to boot in a non-enforcing mode to
@@ -132,7 +132,7 @@ Building Steps (based on section 4 of the UsersGuide-2.0.pdf):
     prebuilt tar archive.
 
     For Yocto, in your build directory, edit conf/local.conf, add:
-      IMAGE_INSTALL_append = " openssl-fips-dev"
+      IMAGE_INSTALL:append = " openssl-fips-dev"
       OPENSSL_FIPS_ENABLED = "1"
       OPENSSL_FIPS_PREBUILT = "<path>"
 
@@ -230,7 +230,7 @@ program, and embed the fingerprint.
 
 On host:
 edit local.conf to add openssl-fips-example to image
-$ echo 'IMAGE_INSTALL_append = " openssl-fips-example"' >> conf/local.conf
+$ echo 'IMAGE_INSTALL:append = " openssl-fips-example"' >> conf/local.conf
 $ bitbake <image>
 
 On target:

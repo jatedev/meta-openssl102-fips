@@ -11,7 +11,7 @@ LIC_FILES_CHKSUM = "file://LICENSE;md5=f9a8f968107345e0b75aa8c2ecaa7ec8"
 # Set "OPENSSL_FIPS_PREBUILT" to the location of the prebuilt
 # openssl-fips-TARGET_ARCH-install.tar.bz2 files.
 #
-FILESEXTRAPATHS_prepend := "${OPENSSL_FIPS_PREBUILT}:"
+FILESEXTRAPATHS:prepend := "${OPENSSL_FIPS_PREBUILT}:"
 
 PREBUILT_OPENSSL_FIPS = "openssl-fips-${PV}-${TARGET_ARCH}-install.tar.bz2"
 
@@ -20,8 +20,8 @@ SRC_URI = "file://${PREBUILT_OPENSSL_FIPS} \
 "
 S = "${WORKDIR}"
 
-RDEPENDS_${PN}-dev = ""
-FILES_${PN}-dev += "${bindir}/fipsld ${libdir}/ssl/fips-2.0"
+RDEPENDS:${PN}-dev = ""
+FILES:${PN}-dev += "${bindir}/fipsld ${libdir}/ssl/fips-2.0"
 
 INHIBIT_PACKAGE_DEBUG_SPLIT = '1'
 INHIBIT_PACKAGE_STRIP = '1'

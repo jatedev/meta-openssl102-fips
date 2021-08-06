@@ -1,2 +1,2 @@
-FILESEXTRAPATHS_prepend := "${THISDIR}/rng-tools:"
+FILESEXTRAPATHS:prepend := "${THISDIR}/rng-tools:"
 

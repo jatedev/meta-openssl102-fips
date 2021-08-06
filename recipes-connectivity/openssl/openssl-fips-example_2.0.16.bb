@@ -19,14 +19,14 @@ DEPENDS = " \
    openssl \
 "
 
-RDEPENDS_${PN} = " \
+RDEPENDS:${PN} = " \
    openssl-fips-dev \
    openssl-dev \
    openssl-staticdev \
    packagegroup-core-buildessential \
 "
 
-FILES_${PN} += "${libdir}/ssl/fips-2.0/test"
+FILES:${PN} += "${libdir}/ssl/fips-2.0/test"
 
 do_configure[noexec] = "1"
 
@@ -47,7 +47,7 @@ do_install() {
     sed -i "s:@LIBDIR@:${libdir}:g" ${D}/${libdir}/ssl/fips-2.0/test/Makefile
 }
 
-INSANE_SKIP_${PN} += "dev-deps"
+INSANE_SKIP:${PN} += "dev-deps"
 
 python __anonymous() {
     if d.getVar("OPENSSL_FIPS_ENABLED", True) != "1":

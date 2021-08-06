@@ -27,13 +27,13 @@ EXTRA_OECONF += " \
 EXTRA_OEMAKE += " \
     -I${STAGING_LIBDIR_NATIVE}/ssl/fips-2.0/include \
 "
-do_install_append() {
+do_install:append() {
     install -d ${D}${libdir}/fipscheck
 }
 
 inherit qemu
 
-pkg_postinst_${PN} () {
+pkg_postinst:${PN} () {
     if [ -n "$D" ]; then
         if ${@bb.utils.contains('MACHINE_FEATURES', 'qemu-usermode', 'true','false', d)}; then
             ${@qemu_run_binary(d, '$D', '${bindir}/fipshmac')} \
@@ -54,4 +54,4 @@ python __anonymous() {
         raise bb.parse.SkipPackage("To enable the fipscheck recipe set OPENSSL_FIPS_ENABLED = '1'.")
 }
 
-FILES_${PN} += "${libdir}/fipscheck"
+FILES:${PN} += "${libdir}/fipscheck"

@@ -1,4 +1,4 @@
-ROOTFS_POSTPROCESS_COMMAND_append = " enable_system_fips;"
+ROOTFS_POSTPROCESS_COMMAND:append = " enable_system_fips;"
 
 enable_system_fips() {
     install -d ${IMAGE_ROOTFS}${sysconfdir}
