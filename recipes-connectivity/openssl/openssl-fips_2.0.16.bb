@@ -84,6 +84,12 @@ def which(paths, file):
 
 OPENSSL_FIPS_PREBUILT ?= "${FILE_DIRNAME}/${BPN}"
 
+#
+# This variable notifes the user of a machine specific path, so it should not
+# be used in the task hash calculation
+#
+do_check_fips[vardepsexclude] += "LAYERPATH_meta-openssl-one-zero-two-fips"
+
 addtask do_check_fips before do_fetch
 python do_check_fips() {
     if d.getVar('OPENSSL_FIPS_FULLPATH', True) == "":
